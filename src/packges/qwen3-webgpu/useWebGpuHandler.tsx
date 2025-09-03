@@ -7,8 +7,17 @@ type UserWorkerHandlerOptions = {
 };
 
 type GenFnType = {
-  messages: string[];
+  messages: { role: string; content: string }[];
   reasonEnabled: boolean;
+};
+
+type ProgressItemType = {
+  status: string;
+  name: string;
+  file: string;
+  progress: number;
+  loaded: number;
+  total: number;
 };
 
 export const useWebGpuHandler = (
@@ -23,11 +32,15 @@ export const useWebGpuHandler = (
   // Model loading and progress
   const [error, setError] = useState(null);
   const [loadingMessage, setLoadingMessage] = useState("");
-  const [progressItems, setProgressItems] = useState<any>([]);
+  const [progressItems, setProgressItems] = useState<ProgressItemType[]>([]);
   const [isRunning, setIsRunning] = useState(false);
 
   // Inputs and outputs
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState<{ id: string; text: string }>({
+    id: "",
+    text: "",
+  });
+  const [messageId, setMessageId] = useState("");
 
   const callbacks = useMemo(() => {
     return {
@@ -59,21 +72,26 @@ export const useWebGpuHandler = (
       },
       start: () => {
         setIsRunning(true);
-        setMessage("");
+        setMessage({ id: "", text: "" });
       },
       update: (data: any) => {
         const { output } = data;
 
-        if (output) setMessage((prev) => prev + output);
+        if (output)
+          setMessage((prev) => {
+            return { id: messageId, text: prev.text + output };
+          });
       },
       complete: () => {
         setIsRunning(false);
+        setMessageId("");
       },
       error: (data: any) => {
         setError(data.data);
+        setMessageId("");
       },
     };
-  }, []);
+  }, [messageId]);
 
   useEffect(() => {
     if (workerHandlerRef.current) return;
@@ -82,7 +100,7 @@ export const useWebGpuHandler = (
     });
 
     workerHandlerRef.current = new WebGPUHandler(worker, callbacks);
-  }, [callbacks]);
+  }, [callbacks, messageId]);
 
   const load = async () => {
     const workerHandler = workerHandlerRef.current;
@@ -118,11 +136,16 @@ export const useWebGpuHandler = (
     })();
   }, [options.autoload]);
 
-  const generate = (message: string) => {
+  const generate = (
+    message: string,
+    id: string,
+    options?: { reason: boolean }
+  ) => {
     const data: GenFnType = {
-      messages: [message], // this must be an array
-      reasonEnabled: false,
+      messages: [{ role: "user", content: message }], // this must be an array
+      reasonEnabled: options?.reason || false,
     };
+    setMessageId(id);
     workerHandlerRef.current.generate(data);
   };
 
@@ -143,5 +166,6 @@ export const useWebGpuHandler = (
     progressItems,
     isRunning,
     message,
+    messageId,
   };
 };
