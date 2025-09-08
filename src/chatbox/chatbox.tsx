@@ -16,7 +16,6 @@ export function ChatBox() {
     message,
     load,
     isCompatible,
-    error,
     isLoaded,
     isLoading,
     isRunning,
