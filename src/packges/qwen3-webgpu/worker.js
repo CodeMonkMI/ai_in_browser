@@ -51,7 +51,14 @@ let past_key_values_cache = null;
 async function generate({ messages, reasonEnabled }) {
   // Retrieve the text-generation pipeline.
   const [tokenizer, model] = await TextGenerationPipeline.getInstance();
-
+  messages = [
+    {
+      role: "system",
+      content:
+        "You are an AI assistant that must always respond in English. Do not use any other language.",
+    },
+    ...messages,
+  ];
   const inputs = tokenizer.apply_chat_template(messages, {
     add_generation_prompt: true,
     return_dict: true,
@@ -59,8 +66,8 @@ async function generate({ messages, reasonEnabled }) {
   });
 
   const [START_THINKING_TOKEN_ID, END_THINKING_TOKEN_ID] = tokenizer.encode(
-    "<think></think>",
-    { add_special_tokens: false },
+    "<small></small>",
+    { add_special_tokens: false }
   );
 
   let state = "answering"; // 'thinking' or 'answering'
@@ -111,7 +118,7 @@ async function generate({ messages, reasonEnabled }) {
     do_sample: true,
     // repetition_penalty: 1.1,
     top_k: 20,
-    temperature: reasonEnabled ? 0.6 : 0.7,
+    temperature: reasonEnabled ? 0.3 : 0.7,
 
     max_new_tokens: 16384,
     streamer,
